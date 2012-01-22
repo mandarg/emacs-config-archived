@@ -1,3 +1,22 @@
+;; Set font
+(set-face-attribute 'default nil
+		    :family "Inconsolata" :height 100)
+
+;; Keep reviewers happy
+(setq-default indent-tabs-mode nil)
+(add-hook 'before-save-hook 'delete-trailing-whitespace)
+
+;; Auto-save bullshit
+
+;; Put autosave files (ie #foo#) and backup files (ie foo~) in ~/.emacs.d/.
+(custom-set-variables
+  '(auto-save-file-name-transforms '((".*" "~/.emacsbackup/autosaves/\\1" t)))
+  '(backup-directory-alist '((".*" . "~/.emacsbackup/backups/"))))
+
+
+;; create the autosave dir if necessary, since emacs won't.
+(make-directory "~/.emacsbackup/autosaves/" t)
+(make-directory "~/.emacsbackup/backups" t)
 
 
 
@@ -28,33 +47,33 @@
        (normal-top-level-add-subdirs-to-load-path))
 
 
-;; Initialize Pymacs                                                                                           
+;; Initialize Pymacs
 (autoload 'pymacs-apply "pymacs")
 (autoload 'pymacs-call "pymacs")
 (autoload 'pymacs-eval "pymacs" nil t)
 (autoload 'pymacs-exec "pymacs" nil t)
 (autoload 'pymacs-load "pymacs" nil t)
-;; Initialize Rope                                                                                             
+;; Initialize Rope
 (pymacs-load "ropemacs" "rope-")
 (setq ropemacs-enable-autoimport t)
 
-;; Initialize Yasnippet                                                                                        
-;Don't map TAB to yasnippet                                                                                    
-;In fact, set it to something we'll never use because                                                          
-;we'll only ever trigger it indirectly.                                                                        
+;; Initialize Yasnippet
+;Don't map TAB to yasnippet
+;In fact, set it to something we'll never use because
+;we'll only ever trigger it indirectly.
 (setq yas/trigger-key (kbd "C-c <kp-multiply>"))
 (yas/initialize)
 (yas/load-directory "~/.emacs.d/plugins/yasnippet/snippets")
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;                                         
-;;; Auto-completion                                                                                            
-;;;  Integrates:                                                                                               
-;;;   1) Rope                                                                                                  
-;;;   2) Yasnippet                                                                                             
-;;;   all with AutoComplete.el                                                                                 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;                                         
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Auto-completion
+;;;  Integrates:
+;;;   1) Rope
+;;;   2) Yasnippet
+;;;   all with AutoComplete.el
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun prefix-list-elements (list prefix)
   (let (value)
     (nreverse
@@ -104,12 +123,12 @@
                  (set (make-local-variable 'ac-candidate-function) 'ac-python-candidate)
                  (set (make-local-variable 'ac-auto-start) nil)))
 
-;;Ryan's python specific tab completion                                                                        
+;;Ryan's python specific tab completion
 (defun ryan-python-tab ()
-  ; Try the following:                                                                                         
-  ; 1) Do a yasnippet expansion                                                                                
-  ; 2) Do a Rope code completion                                                                               
-  ; 3) Do an indent                                                                                            
+  ; Try the following:
+  ; 1) Do a yasnippet expansion
+  ; 2) Do a Rope code completion
+  ; 3) Do an indent
   (interactive)
   (if (eql (ac-start) 0)
       (indent-for-tab-command)))
@@ -120,13 +139,13 @@
   (set (make-local-variable 'ac-auto-start) nil))
 
 (define-key python-mode-map "\t" 'ryan-python-tab)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;                                         
-;;; End Auto Completion                                                                                        
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; End Auto Completion
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; CEDET
 
 (load-file "~/.emacs.d/plugins/cedet-1.0.1/common/cedet.el")
 (global-ede-mode 1)                      ; Enable the Project management system
-(semantic-load-enable-code-helpers)      ; Enable prototype help and smart completion 
+(semantic-load-enable-code-helpers)      ; Enable prototype help and smart completion
 (global-srecode-minor-mode 1)            ; Enable template insertion menu
