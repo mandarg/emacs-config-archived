@@ -1,6 +1,6 @@
 ;; Set font
 (set-face-attribute 'default nil
-		    :family "Inconsolata" :height 100)
+		    :family "Inconsolata" :height 140)
 ;; Set package archives
 (setq package-archives '(("gnu" . "http://elpa.gnu.org/packages/")
                            ("marmalade" . "http://marmalade-repo.org/packages/")
