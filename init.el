@@ -1,165 +1,175 @@
-;; Set font
-(set-face-attribute 'default nil
-		    :family "Inconsolata" :height 100)
+(require 'cask "~/.cask/cask.el")
+(cask-initialize)
 
-;; Keep reviewers happy
-(setq-default indent-tabs-mode nil)
-(add-hook 'before-save-hook 'delete-trailing-whitespace)
+;; UI Cleanups
+(setq inhibit-splash-screen t)
+(tool-bar-mode 0)
+(menu-bar-mode 0)
+(toggle-scroll-bar 0)
+(column-number-mode 1)
+;;(tabbar-mode 0)
 
-;; Make Enter actually indent
-(global-set-key "\C-m" 'newline-and-indent)
+(setq package-archives '(("gnu" . "https://elpa.gnu.org/packages/")
+			 ("marmalade" . "https://marmalade-repo.org/packages/")
+			 ("melpa" . "https://melpa.milkbox.net/packages/") 
+			 ("melpa-stable" . "https://melpa-stable.milkbox.net/packages/")))
 
-;; Auto-save bullshit
-
-;; Put autosave files (ie #foo#) and backup files (ie foo~) in ~/.emacs.d/.
-(custom-set-variables
-  '(auto-save-file-name-transforms '((".*" "~/.emacsbackup/autosaves/\\1" t)))
-  '(backup-directory-alist '((".*" . "~/.emacsbackup/backups/"))))
-
-
-;; create the autosave dir if necessary, since emacs won't.
-(make-directory "~/.emacsbackup/autosaves/" t)
-(make-directory "~/.emacsbackup/backups" t)
-
-
-
-;; snippets
-(add-to-list 'load-path
-              "~/.emacs.d/plugins/yasnippet")
-(require 'yasnippet) ;; not yasnippet-bundle
-(yas/global-mode 1)
-
-
-;; auto-complete
-(add-to-list 'load-path "~/.emacs.d/vendor/auto-complete")
-(require 'auto-complete-config)
-(add-to-list 'ac-dictionary-directories "~/.emacs.d/vendor/auto-complete/dict")
-(ac-config-default)
-
-(require 'python)
-(require 'auto-complete)
-(require 'yasnippet)
-
-(autoload 'python-mode "python-mode" "Python Mode." t)
-(add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
-(add-to-list 'interpreter-mode-alist '("python" . python-mode))
-
-
-(add-to-list 'load-path "~/.emacs.d/vendor")
-(progn (cd "~/.emacs.d/vendor")
-       (normal-top-level-add-subdirs-to-load-path))
-
-
-;; Initialize Pymacs
-;;(autoload 'pymacs-apply "pymacs")
-;;(autoload 'pymacs-call "pymacs")
-;;(autoload 'pymacs-eval "pymacs" nil t)
-;;(autoload 'pymacs-exec "pymacs" nil t)
-;;(autoload 'pymacs-load "pymacs" nil t)
-;; Initialize Rope
-;;(pymacs-load "ropemacs" "rope-")
-;;(setq ropemacs-enable-autoimport t)
-
-;; Initialize Yasnippet
-;Don't map TAB to yasnippet
-;In fact, set it to something we'll never use because
-;we'll only ever trigger it indirectly.
-(setq yas/trigger-key (kbd "C-c <kp-multiply>"))
-(yas/initialize)
-(yas/load-directory "~/.emacs.d/plugins/yasnippet/snippets")
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Auto-completion
-;;;  Integrates:
-;;;   1) Rope
-;;;   2) Yasnippet
-;;;   all with AutoComplete.el
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun prefix-list-elements (list prefix)
-  (let (value)
-    (nreverse
-     (dolist (element list value)
-      (setq value (cons (format "%s%s" prefix element) value))))))
-(defvar ac-source-rope
-  '((candidates
-     . (lambda ()
-         (prefix-list-elements (rope-completions) ac-target))))
-  "Source for Rope")
-(defun ac-python-find ()
-  "Python `ac-find-function'."
-  (require 'thingatpt)
-  (let ((symbol (car-safe (bounds-of-thing-at-point 'symbol))))
-    (if (null symbol)
-        (if (string= "." (buffer-substring (- (point) 1) (point)))
-            (point)
-          nil)
-      symbol)))
-(defun ac-python-candidate ()
-  "Python `ac-candidates-function'"
-  (let (candidates)
-    (dolist (source ac-sources)
-      (if (symbolp source)
-          (setq source (symbol-value source)))
-      (let* ((ac-limit (or (cdr-safe (assq 'limit source)) ac-limit))
-             (requires (cdr-safe (assq 'requires source)))
-             cand)
-        (if (or (null requires)
-                (>= (length ac-target) requires))
-            (setq cand
-                  (delq nil
-                        (mapcar (lambda (candidate)
-                                  (propertize candidate 'source source))
-                                (funcall (cdr (assq 'candidates source)))))))
-        (if (and (> ac-limit 1)
-                 (> (length cand) ac-limit))
-            (setcdr (nthcdr (1- ac-limit) cand) nil))
-        (setq candidates (append candidates cand))))
-    (delete-dups candidates)))
-(add-hook 'python-mode-hook
-          (lambda ()
-                 (auto-complete-mode 1)
-                 (set (make-local-variable 'ac-sources)
-                      (append ac-sources '(ac-source-rope) '(ac-source-yasnippet)))
-                 (set (make-local-variable 'ac-find-function) 'ac-python-find)
-                 (set (make-local-variable 'ac-candidate-function) 'ac-python-candidate)
-                 (set (make-local-variable 'ac-auto-start) nil)))
-
-;;Ryan's python specific tab completion
-(defun ryan-python-tab ()
-  ; Try the following:
-  ; 1) Do a yasnippet expansion
-  ; 2) Do a Rope code completion
-  ; 3) Do an indent
-  (interactive)
-  (if (eql (ac-start) 0)
-      (indent-for-tab-command)))
-
-(defadvice ac-start (before advice-turn-on-auto-start activate)
-  (set (make-local-variable 'ac-auto-start) t))
-(defadvice ac-cleanup (after advice-turn-off-auto-start activate)
-  (set (make-local-variable 'ac-auto-start) nil))
-
-(define-key python-mode-map "\t" 'ryan-python-tab)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; End Auto Completion
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;; CEDET
-
-(load-file "~/.emacs.d/plugins/cedet-1.0.1/common/cedet.el")
-(global-ede-mode 1)                      ; Enable the Project management system
-(semantic-load-enable-code-helpers)      ; Enable prototype help and smart completion
-(global-srecode-minor-mode 1)            ; Enable template insertion menu
-
-;;; packaging
-(let ((default-directory "~/.emacs.d/"))
+(let ((default-directory "~/.emacs.d"))
   (normal-top-level-add-subdirs-to-load-path))
 
-;;;org specific stuff
-(require 'org-install)
-(add-to-list 'auto-mode-alist '("\\.org$" . org-mode))
-(define-key global-map "\C-cl" 'org-store-link)
-(define-key global-map "\C-ca" 'org-agenda)
-(setq org-log-done t)
+
+;; (dolist (dir (directory-files "~/Library/Preferences/Aquamacs Emacs" t "^[^.]"))
+;;   (when (file-directory-p dir)
+;;     (setq load-path (cons dir load-path))))
+
+
+(require 'color-theme)
+
+
+;; save history between sessions
+(setq savehist-additional-variables    ;; also save...
+  '(search-ring regexp-search-ring)    ;; ... my search entries
+  savehist-file "~/.emacs.d/savehist") ;; keep my home clean
+(savehist-mode t)                      ;; do customization before activate
+
+;; screw backup and autosave. up yours delors.
+(setq make-backup-files nil)
+(setq auto-save-default nil)
+
+;; code folding using outline mode, cedet is unusable right now
+;; (add-hook 'python-mode-hook 'outline-minor-mode)
+;; (require 'outline-magic)
+;; (define-key outline-minor-mode-map (kbd "<C-tab>") 'outline-cycle)
+
+;;; Python
+;; fixme (package-initialize)
+;; fixme (elpy-enable)
+
+;; let mouse work in terminal emacs
+(unless window-system
+  (require 'mouse)
+  (xterm-mouse-mode t)
+  (global-set-key [mouse-4] '(lambda ()
+                              (interactive)
+                              (scroll-down 1)))
+  (global-set-key [mouse-5] '(lambda ()
+                              (interactive)
+                              (scroll-up 1)))
+  (defun track-mouse (e))
+  (setq mouse-sel-mode t)
+)
+
+
+;;; Make erc much less chatty
+(require 'erc-utils)
+(setq erc-hide-list '("MODE"))
+(add-hook 'erc-insert-pre-hook 'erc-ignore-unimportant)
+
+(require 'utils)
+
+;;Global key bindings
+(global-set-key (kbd "<deletechar>") 'backward-delete-char)
+(global-set-key (kbd "ESC <deletechar>") 'backward-kill-word)
+(global-set-key (kbd "C-z") nil)
+(global-set-key "\M-g" 'goto-line)
+(global-set-key "\M-k" 'kill-word)
+(global-set-key "\C-cc" 'compile)
+(global-set-key "\C-a" 'beginning-of-line-dwim)
+(global-set-key "\C-co" 'other-window)
+(global-set-key (kbd "M-r") 're-search-backward)
+(global-set-key (kbd "M-s") 're-search-forward)
+(global-set-key [f12] 'locate)
+
+;; sauron!
+(require 'sauron)
+(global-set-key (kbd "C-c s") 'sauron-toggle-hide-show)
+(setq sauron-min-priority 2)
+(setq sauron-max-line-length 140)
+
+;; events to ignore
+(add-hook 'sauron-event-block-functions
+  (lambda (origin prio msg &optional props)
+    (or
+      (string-match "^*** Users" msg)
+      (string-match "has joined #")
+      (string-match "has left #")))) ;; filter out IRC spam
+
+;;; Python
+(package-initialize)
+(elpy-enable)
+
+;;;
+(require 'flymake-cursor)
+
+
+(global-set-key (kbd "C-c +") 'increment-number-at-point)
+(global-set-key [f1] 'show-file-name)
+(put 'upcase-region 'disabled nil)
+
+
+(message "Hello-world -- this is my init.el file loading!")
+
+
+;;; org-capture
+
+(define-key global-map (kbd "\C-ct") 'org-capture)
+
+(setq org-capture-templates
+      '(
+        ("t" "Todo" entry (file+headline "~/notes/todo.org" "Tasks")
+         "* TODO %?\n  %u\n")
+        ("n" "Note" entry (file+headline "~/notes/notes.org" "Notes")
+         "* Note: %?\n  %u\n")
+        ("j" "Journal"
+         entry (file+datetree "~/notes/journal.org")
+         "* %?"
+         :empty-lines 1)
+        ))
+
+
+;; A-M-down and A-M-up bound to other-window. You'll get there
+;; eventually, which is much better than figuring out where to chord
+
+(global-set-key (kbd "A-M-<down>") 'other-window)
+(global-set-key (kbd "A-M-<up>") 'other-window)
+
+
+(setq ido-enable-flex-matching t)
+(setq ido-everywhere t)
+(ido-mode 1)
+
+(dumb-jump-mode t)
+
+;; Color-theme
+(require 'color-theme)
+(load "~/.emacs.d/color-theme-molokai.el")
+(eval-after-load "color-theme"
+  '(progn
+     (color-theme-initialize)
+     (color-theme-molokai)))
+
+(defun system-is-mac ()
+  (interactive)
+  (string-equal system-type "darwin"))
+
+
+(if (system-is-mac)
+    (setq locate-command "mdfind")
+  )
+;; ; set command key to be meta instead of option
+;; (if (system-is-mac)
+;;     ;; (setq ns-command-modifier 'meta)
+;;     (setq mac-command-modifier 'meta
+;;     (setq mac-command-modifier 'alt))
+
+
+(setq markdown-command "pandoc -c file:///Users/mgokhale/.emacs.d/pandoc-github.css --from markdown_github -t html5 --mathjax --highlight-style pygments --standalone")
+
+(electric-pair-mode t)
+
+
+;; from the gnu's mouth
+;; https://www.gnu.org/software/emacs/manual/html_node/emacs/Frame-Parameters.html#Frame-Parameters
+
+(add-to-list 'default-frame-alist
+             '(font . "Inconsolata-11"))
